@@ -49,7 +49,6 @@ if __name__ == "__main__":
             batch_feature_array[batch_num] = pad_sequences(batch_feature_array[batch_num])[0]
         return batch_feature_array
 
-
     train_feature_minibatches = pad_all_batches(train_feature_minibatches)
     val_feature_minibatches = pad_all_batches(val_feature_minibatches)
 
@@ -57,7 +56,7 @@ if __name__ == "__main__":
     num_batches_per_epoch = int(math.ceil(num_examples / Config.batch_size))
 
     with tf.Graph().as_default():
-        model = CTCModel()
+        model = SeparationModel()
         init = tf.global_variables_initializer()
 
         saver = tf.train.Saver(tf.trainable_variables())

@@ -55,7 +55,6 @@ class SeparationModel():
         self.targets_placeholder = tf.sparse_placeholder(tf.int32, name='targets')
         self.seq_lens_placeholder = tf.placeholder(tf.int32, shape=(None), name='seq_lens')
 
-
     def create_feed_dict(self, inputs_batch, targets_batch, seq_lens_batch):
         """Creates the feed_dict for the digit recognizer.
 
