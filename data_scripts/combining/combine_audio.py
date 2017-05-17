@@ -13,7 +13,6 @@ for clean in os.listdir(INPUT_CLEAN_DIR):
 			rate_noise, data_noise = wavfile.read(INPUT_NOISE_DIR + noise)
 
 			length = len(data_clean)
-			print('data_clean: %s' % (data_clean))
 
 			data_noise = data_noise[:length]
 

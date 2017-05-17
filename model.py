@@ -51,11 +51,10 @@ class SeparationModel():
 
         (Don't change the variable names)
         """
-        self.inputs_placeholder = tf.placeholder(tf.float32, shape=(None, None, Config.num_final_features), name='inputs')
-        self.targets_placeholder = tf.sparse_placeholder(tf.int32, name='targets')
-        self.seq_lens_placeholder = tf.placeholder(tf.int32, shape=(None), name='seq_lens')
+        self.inputs_placeholder = tf.placeholder(tf.float32, shape=(1, None, Config.num_final_features), name='inputs')
+        self.targets_placeholder = tf.sparse_placeholder(tf.int32, shape=(1, None, Config.output_size), name='targets')
 
-    def create_feed_dict(self, inputs_batch, targets_batch, seq_lens_batch):
+    def create_feed_dict(self, inputs_batch, targets_batch):
         """Creates the feed_dict for the digit recognizer.
 
         A feed_dict takes the form of:
@@ -75,7 +74,10 @@ class SeparationModel():
         Returns:
             feed_dict: The feed dictionary mapping from placeholders to values.
         """        
-        feed_dict = {}
+        feed_dict = {
+            self.inputs_placeholder: [tf.transpose(inputs_batch)],
+            self.targets_placeholder: [tf.transpose(targets_batch)],
+        }
 
         return feed_dict
 
@@ -95,9 +97,14 @@ class SeparationModel():
             * tf.contrib.rnn.GRUCell, tf.contrib.rnn.MultiRNNCell and tf.nn.dynamic_rnn are of interest
         """
 
-        logits = None
+        gru_cell = tf.contrib.rnn.GRUCell(Config.output_size, input_size=Config.num_final_features, activation=tf.nn.relu)
 
-        self.logits = logits
+        if Config.num_layers > 1:
+            # multi layer
+
+        output, state = tf.nn.dynamic_rnn(gru_cell, self.inputs_placeholder)
+
+        self.output = output
 
 
     def add_loss_op(self):
@@ -112,10 +119,14 @@ class SeparationModel():
         - Compute L2 regularization cost for all trainable variables. Use tf.nn.l2_loss(var). 
 
         """
-        ctc_loss = []
         l2_cost = 0.0
 
-        self.loss = Config.l2_lambda * l2_cost + cost               
+        squared_error = tf.norm(self.output - self.targets_placeholder, ord=2)
+
+        tf.summary.scalar("squared_error", self.loss)
+
+        self.loss = Config.l2_lambda * l2_cost + squared_error
+        tf.summary.scalar("loss", self.loss)
 
     def add_training_op(self):
         """Sets up the training Ops.
@@ -138,16 +149,6 @@ class SeparationModel():
         
         self.optimizer = optimizer
 
-    def add_decoder_and_wer_op(self):
-        """Setup the decoder and add the word error rate calculations here. 
-
-        Tip: You will find tf.nn.ctc_beam_search_decoder and tf.edit_distance methods useful here. 
-        Also, report the mean WER over the batch in variable wer
-
-        """
-        self.decoded_sequence = decoded_sequence
-        self.wer = wer
-
     def add_summary_op(self):
         self.merged_summary_op = tf.summary.merge_all()
 
@@ -162,9 +163,9 @@ class SeparationModel():
         self.add_summary_op()
         
 
-    def train_on_batch(self, session, train_inputs_batch, train_targets_batch, train_seq_len_batch, train=True):
+    def train_on_batch(self, session, train_inputs_batch, train_targets_batch, train=True):
         feed = self.create_feed_dict(train_inputs_batch, train_targets_batch, train_seq_len_batch)
-        batch_cost, wer, batch_num_valid_ex, summary = session.run([self.loss, self.wer, self.num_valid_examples, self.merged_summary_op], feed)
+        batch_cost, summary = session.run([self.loss, self.merged_summary_op], feed)
 
         if math.isnan(batch_cost): # basically all examples in this batch have been skipped 
             return 0
@@ -173,7 +174,7 @@ class SeparationModel():
 
         return batch_cost, wer, summary
 
-    def print_results(self, train_inputs_batch, train_targets_batch, train_seq_len_batch):
+    def print_results(self, train_inputs_batch, train_targets_batch):
         train_feed = self.create_feed_dict(train_inputs_batch, train_targets_batch, train_seq_len_batch)
         train_first_batch_preds = session.run(self.decoded_sequence, feed_dict=train_feed)
         compare_predicted_to_true(train_first_batch_preds, train_targets_batch)        

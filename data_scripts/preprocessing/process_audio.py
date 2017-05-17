@@ -5,25 +5,35 @@ import numpy as np
 from scipy import signal
 from scipy.signal import spectrogram
 
-np.set_printoptions(threshold=np.nan)
+INPUT_NOISE_DIR = '../../data/raw_noise/'
+INPUT_CLEAN_DIR = '../../data/sliced_clean/'
+OUTPUT_DIR = '../../data/processed/'
 
+if __name__ == '__main__':
+	processed_data = []
 
-DATA_DIR = '../../data/sliced_clean/'
-# OUTPUT_DIR = '../../data/sliced_clean/'
+	for clean in os.listdir(INPUT_CLEAN_DIR):
+		if clean[-4:] == '.wav':
+			rate_clean, data_clean = wavfile.read(INPUT_CLEAN_DIR + clean)
+			for noise in os.listdir(INPUT_NOISE_DIR):
+				if noise[-4:] == '.wav':
+					
+					_, data_noise = wavfile.read(INPUT_NOISE_DIR + noise)
 
+					length = len(data_clean)	
 
-for f in os.listdir(DATA_DIR):
-	# if f[-4:] == '.wav':
-	if f == 'f1_script5_clean_174.wav':
-		rate, data = wavfile.read(DATA_DIR + f)
-		# data = signal.decimate(data, 4)
-		# data *= np.hamming(len(data))
+					data_noise = data_noise[:length][:]
 
-		# data = abs(np.fft.rfft(data))
-		# X_db = 20 * np.log10(data)
-		# freqs = np.fft.rfftfreq(441, 1.0/44100)
-		# plt.plot(freqs, X_db)
-		# plt.show
-		f, t, Sx = spectrogram(data, fs=rate, window=('hamming'), nperseg=441)
-		print Sx
-		break
+					data_combined = [(s1/2 + s2/2) for (s1, s2) in zip(data_clean, data_noise)]
+
+					_, _, Sx_clean = spectrogram(data_clean, fs=rate_clean, window=('hamming'), nperseg=441)
+					_, _, Sx_noise = spectrogram(data_noise, fs=rate_clean, window=('hamming'), nperseg=441)
+					_, _, Sx_combined = spectrogram(data_combined, fs=rate_clean, window=('hamming'), nperseg=441)
+
+					Sx_target = np.concatenate((Sx_clean, Sx_noise), axis=0)
+
+					processed_data.append([Sx_combined, Sx_target])	
+			
+			print('Finished processing clean noise %s' % (clean))
+
+	np.save(OUTPUT_DIR + 'train.npy', processed_data)
