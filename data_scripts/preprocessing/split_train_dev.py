@@ -3,6 +3,7 @@ sys.path.append('../../')
 import os
 import numpy as np
 from config import Config
+from create_wavefile import *
 import random
 
 DIR = '../../data/processed/'
@@ -34,9 +35,9 @@ if __name__ == '__main__':
 
 					data_combined = [(s1/2 + s2/2) for (s1, s2) in zip(data_clean, data_noise)]
 
-					_, _, Sx_clean = spectrogram(data_clean, fs=rate_clean, window=('hamming'), nperseg=441)
-					_, _, Sx_noise = spectrogram(data_noise, fs=rate_clean, window=('hamming'), nperseg=441)
-					_, _, Sx_combined = spectrogram(data_combined, fs=rate_clean, window=('hamming'), nperseg=441)
+					Sx_clean = pretty_spectrogram(data_clean.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
+					Sx_noise = pretty_spectrogram(data_noise.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
+					Sx_combined = pretty_spectrogram(data_combined.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
 
 					Sx_target = np.concatenate((Sx_clean, Sx_noise), axis=0)
 					processed_data.append([Sx_combined, Sx_target])	
@@ -45,8 +46,8 @@ if __name__ == '__main__':
 	
 	dev_ix = set(random.sample(xrange(num_data), num_data / 5))
 
-	train_data = [s for i, s in enumerate(total_data) if i not in dev_ix]
-	dev_data = [s for i, s in enumerate(total_data) if i in dev_ix]
+	train_data = [s for i, s in enumerate(processed_data) if i not in dev_ix]
+	dev_data = [s for i, s in enumerate(processed_data) if i in dev_ix]
 
 	train_input, train_target = zip(*train_data)
 	dev_input, dev_target = zip(*dev_data)
