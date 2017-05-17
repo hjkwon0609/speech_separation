@@ -14,7 +14,7 @@ DATA_DIR = '../../data/sliced_clean/'
 
 for f in os.listdir(DATA_DIR):
 	# if f[-4:] == '.wav':
-	if f == 'f1_script5_clean_174.wav':
+	if f == 'f1_script1_clean_34.wav':
 		rate, data = wavfile.read(DATA_DIR + f)
 		# data = signal.decimate(data, 4)
 		# data *= np.hamming(len(data))
