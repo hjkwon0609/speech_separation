@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import copy
 import numpy as np
+from numpy import linalg as la
 import scipy.ndimage
 from scipy import signal
 from scipy.io import wavfile
@@ -9,10 +10,13 @@ from scipy.signal import spectrogram, butter, lfilter
 
 np.set_printoptions(threshold=np.nan)
 
-spec_thresh = 4
-lowcut = 0
-highcut = 22050
+spec_thresh = 8
+lowcut = 500
+# 22050
+highcut = 15000
+# 882
 fft_size = 882
+# 16
 step_size = fft_size / 16
 
 
@@ -259,6 +263,8 @@ if __name__ == "__main__":
 			wav_spectrogram = pretty_spectrogram(data.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
 
 			recovered_audio_orig = invert_pretty_spectrogram(wav_spectrogram, fft_size=fft_size, step_size=step_size, log=True, n_iter=10)
+			multiplier = la.norm(data) / la.norm(recovered_audio_orig)
+			recovered_audio_orig *= multiplier
 			wavfile.write(OUTPUT_DIR + "test.wav", rate, recovered_audio_orig)
 			
 			break
