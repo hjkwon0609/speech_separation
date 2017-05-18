@@ -75,8 +75,8 @@ class SeparationModel():
             feed_dict: The feed dictionary mapping from placeholders to values.
         """        
         feed_dict = {
-            self.inputs_placeholder: [tf.transpose(inputs_batch)],
-            self.targets_placeholder: [tf.transpose(targets_batch)],
+            self.inputs_placeholder: inputs_batch,
+            self.targets_placeholder: targets_batch,
         }
 
         return feed_dict

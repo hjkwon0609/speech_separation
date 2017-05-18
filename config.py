@@ -5,9 +5,9 @@ class Config:
     information parameters. Model objects are passed a Config() object at
     instantiation.
     """
-    num_final_features = 221
+    num_final_features = 441
 
-    batch_size = 1 # 16
+    batch_size = 16 # 16
     output_size = num_final_features * 2
     num_hidden = 128
 
@@ -15,4 +15,4 @@ class Config:
 
     num_epochs = 50
     l2_lambda = 0.0000001
-    lr = 1e-3
+    lr = 1e-4

@@ -16,6 +16,25 @@ from time import gmtime, strftime
 from config import Config
 from model import SeparationModel
 
+
+def clean_data(data):
+    # hack for now so that I don't have to preprocess again
+    num_batches = len(data)
+    print(num_batches)
+    num_samples_in_batch = len(data[0])
+    print(num_samples_in_batch)
+    num_rows_in_sample = len(data[0][0])
+    print(num_rows_in_sample)
+    num_cols_in_row = len(data[0][0][0])
+    print(num_cols_in_row)
+    new_data = np.zeros((num_batches, num_samples_in_batch, num_rows_in_sample, num_cols_in_row))
+    for i, batch in enumerate(data):
+        for j, sample in enumerate(batch):
+            for k, r in enumerate(sample):
+                for l, c in enumerate(r):
+                    new_data[i][j][k][l]
+    return new_data
+
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser()
     # parser.add_argument('--train_path', nargs='?', default='./data/hw3_train.dat', type=str,
@@ -35,11 +54,34 @@ if __name__ == "__main__":
     logs_path = "tensorboard/" + strftime("%Y_%m_%d_%H_%M_%S", gmtime())
 
     DIR = 'data/processed/'
+    TESTING_MODE = True
 
-    train_input = np.load(DIR + 'train_input_batch.npy')
-    train_target = np.load(DIR + 'train_target_batch.npy')
-    dev_input = np.load(DIR + 'dev_input_batch.npy')
-    dev_target = np.load(DIR + 'dev_target_batch.npy')
+    train_input_batch_name = 'train_input_batch.npy'
+    train_target_batch_name = 'train_target_batch.npy'
+    dev_input_batch_name = 'dev_input_batch.npy'
+    dev_target_batch_name = 'dev_target_batch.npy'
+
+    if TESTING_MODE:
+        train_input_batch_name = 'smaller_' + train_input_batch_name
+        train_target_batch_name = 'smaller_' + train_target_batch_name
+        dev_input_batch_name = 'smaller_' + dev_input_batch_name
+        dev_target_batch_name = 'smaller_' + dev_target_batch_name
+
+    train_input = np.load(DIR + train_input_batch_name)
+    train_target = np.load(DIR + train_target_batch_name)
+    dev_input = np.load(DIR + dev_input_batch_name)
+    dev_target = np.load(DIR + dev_target_batch_name)
+
+    train_input = clean_data(train_input)
+    train_target = clean_data(train_target)
+    dev_input = clean_data(dev_input)
+    dev_target = clean_data(dev_target)
+    # train_input = np.asarray((np.asarray((np.asarray((np.asarray((i for i in r), dtype=np.float64) for r in sample), dtype=np.float64) for sample in batch), dtype=np.float64) for batch in train_input), dtype=np.float64)
+    # train_target = np.asarray((np.asarray((np.asarray((np.asarray((i for i in r), dtype=np.float64) for r in sample), dtype=np.float64) for sample in batch), dtype=np.float64) for batch in train_target), dtype=np.float64)
+    # dev_input = np.asarray((np.asarray((np.asarray((np.asarray((i for i in r), dtype=np.float64) for r in sample), dtype=np.float64) for sample in batch), dtype=np.float64) for batch in dev_input), dtype=np.float64)
+    # dev_target = np.asarray((np.asarray((np.asarray((np.asarray((i for i in r), dtype=np.float64) for r in sample), dtype=np.float64) for sample in batch), dtype=np.float64) for batch in dev_target), dtype=np.float64)
+
+    print(train_input.shape)
 
     # def pad_all_batches(batch_feature_array):
     #     for batch_num in range(len(batch_feature_array)):
@@ -75,7 +117,7 @@ if __name__ == "__main__":
                 total_train_cost = total_train_wer = 0
                 start = time.time()
 
-                input_cost, summary = model.train_on_batch(session, train_input, train_target, train=True)
+                input_cost, summary = model.train_on_batch(session, train_input[0], train_target[0], train=True)
                 total_train_cost += input_cost
 
                 train_writer.add_summary(summary, step_ii)
@@ -93,7 +135,7 @@ if __name__ == "__main__":
                 # train_cost = total_train_cost / num_examples
                 train_cost = total_train_cost
 
-                val_batch_cost, _ = model.train_on_batch(session, dev_input, dev_target, train=False)
+                val_batch_cost, _ = model.train_on_batch(session, dev_input[0], dev_target, train=False)
 
                 log = "Epoch {}/{}, train_cost = {:.3f}, val_cost = {:.3f}, time = {:.3f}"
                 print(
@@ -103,9 +145,9 @@ if __name__ == "__main__":
                 #     batch_ii = 0
                 #     model.print_results(train_feature_minibatches[batch_ii], train_labels_minibatches[batch_ii])
 
-                if args.save_every is not None and args.save_to_file is not None and (
-                    curr_epoch + 1) % args.save_every == 0:
-                    saver.save(session, args.save_to_file, global_step=curr_epoch + 1)
+                # if args.save_every is not None and args.save_to_file is not None and (
+                #     curr_epoch + 1) % args.save_every == 0:
+                #     saver.save(session, args.save_to_file, global_step=curr_epoch + 1)
 
 
 
