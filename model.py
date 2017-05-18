@@ -125,7 +125,7 @@ class SeparationModel():
         squared_error = tf.norm(self.output - self.targets_placeholder, ord=2)
         self.loss = Config.l2_lambda * l2_cost + squared_error
 
-        tf.summary.scalar("squared_error", self.squared_error)       
+        tf.summary.scalar("squared_error", squared_error)       
         
         tf.summary.scalar("loss", self.loss)
 
