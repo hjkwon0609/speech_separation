@@ -123,10 +123,10 @@ class SeparationModel():
         l2_cost = 0.0
 
         squared_error = tf.norm(self.output - self.targets_placeholder, ord=2)
-
-        tf.summary.scalar("squared_error", self.loss)
-
         self.loss = Config.l2_lambda * l2_cost + squared_error
+
+        tf.summary.scalar("squared_error", self.squared_error)       
+        
         tf.summary.scalar("loss", self.loss)
 
     def add_training_op(self):
