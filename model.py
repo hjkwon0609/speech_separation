@@ -103,7 +103,7 @@ class SeparationModel():
             # multi layer
             a = 1
 
-        output, state = tf.nn.dynamic_rnn(gru_cell, self.inputs_placeholder)
+        output, state = tf.nn.dynamic_rnn(gru_cell, self.inputs_placeholder, dtype=tf.float32)
 
         self.output = output
 
