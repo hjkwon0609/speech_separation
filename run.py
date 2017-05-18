@@ -34,9 +34,10 @@ if __name__ == "__main__":
 
     logs_path = "tensorboard/" + strftime("%Y_%m_%d_%H_%M_%S", gmtime())
 
-    train_dataset = load_dataset(args.train_path)
-
-    val_dataset = load_dataset(args.val_path)
+    train_input = np.load(DIR + 'train_input_batch.npy')
+    train_target = np.load(DIR + 'train_target_batch.npy')
+    dev_input = np.load(DIR + 'dev_input_batch.npy')
+    dev_target = np.load(DIR + 'dev_target_batch.npy')
 
     # train_feature_minibatches, train_labels_minibatches, train_seqlens_minibatches = make_batches(train_dataset,
     #                                                                                               batch_size=Config.batch_size)

@@ -51,8 +51,8 @@ class SeparationModel():
 
         (Don't change the variable names)
         """
-        self.inputs_placeholder = tf.placeholder(tf.float32, shape=(1, None, Config.num_final_features), name='inputs')
-        self.targets_placeholder = tf.sparse_placeholder(tf.int32, shape=(1, None, Config.output_size), name='targets')
+        self.inputs_placeholder = tf.placeholder(tf.float32, shape=(None, None, Config.num_final_features), name='inputs')
+        self.targets_placeholder = tf.sparse_placeholder(tf.float32, shape=(None, None, Config.output_size), name='targets')
 
     def create_feed_dict(self, inputs_batch, targets_batch):
         """Creates the feed_dict for the digit recognizer.
@@ -101,6 +101,7 @@ class SeparationModel():
 
         if Config.num_layers > 1:
             # multi layer
+            a = 1
 
         output, state = tf.nn.dynamic_rnn(gru_cell, self.inputs_placeholder)
 
@@ -158,13 +159,12 @@ class SeparationModel():
         self.add_placeholders()
         self.add_prediction_op()
         self.add_loss_op()
-        self.add_training_op()       
-        self.add_decoder_and_wer_op()
+        self.add_training_op()
         self.add_summary_op()
         
 
     def train_on_batch(self, session, train_inputs_batch, train_targets_batch, train=True):
-        feed = self.create_feed_dict(train_inputs_batch, train_targets_batch, train_seq_len_batch)
+        feed = self.create_feed_dict(train_inputs_batch, train_targets_batch)
         batch_cost, summary = session.run([self.loss, self.merged_summary_op], feed)
 
         if math.isnan(batch_cost): # basically all examples in this batch have been skipped 
@@ -175,7 +175,7 @@ class SeparationModel():
         return batch_cost, wer, summary
 
     def print_results(self, train_inputs_batch, train_targets_batch):
-        train_feed = self.create_feed_dict(train_inputs_batch, train_targets_batch, train_seq_len_batch)
+        train_feed = self.create_feed_dict(train_inputs_batch, train_targets_batch)
         train_first_batch_preds = session.run(self.decoded_sequence, feed_dict=train_feed)
         compare_predicted_to_true(train_first_batch_preds, train_targets_batch)        
 
