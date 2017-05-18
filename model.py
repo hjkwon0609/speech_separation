@@ -52,7 +52,7 @@ class SeparationModel():
         (Don't change the variable names)
         """
         self.inputs_placeholder = tf.placeholder(tf.float32, shape=(None, None, Config.num_final_features), name='inputs')
-        self.targets_placeholder = tf.sparse_placeholder(tf.float32, shape=(None, None, Config.output_size), name='targets')
+        self.targets_placeholder = tf.placeholder(tf.float32, shape=(None, None, Config.output_size), name='targets')
 
     def create_feed_dict(self, inputs_batch, targets_batch):
         """Creates the feed_dict for the digit recognizer.
