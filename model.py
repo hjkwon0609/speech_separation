@@ -172,7 +172,7 @@ class SeparationModel():
         if train:
             _ = session.run([self.optimizer], feed)
 
-        return batch_cost, wer, summary
+        return batch_cost, summary
 
     def print_results(self, train_inputs_batch, train_targets_batch):
         train_feed = self.create_feed_dict(train_inputs_batch, train_targets_batch)
