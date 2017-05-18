@@ -115,16 +115,12 @@ def load_dataset(dataset_path):
 		dataset = pickle.load(f)
 	return dataset
 
-def make_batches(dataset, batch_size=16):
-    examples = []
-    sequences = []
-    seqlens = []
+def make_batches(input_data, target_data, batch_size=16):
+    inputs = []
+    targets = []
 
-    l1, l2, l3 = dataset
+    for i in range(0, len(input_data), batch_size):
+        inputs.append(input_data[i:i + batch_size])
+        targets.append(target_data[i:i + batch_size])
 
-    for i in range(0, len(l1), batch_size):
-        examples.append(l1[i:i + batch_size])
-        sequences.append(sparse_tuple_from(l2[i:i + batch_size]))
-        seqlens.append(l3[i:i + batch_size])
-
-    return examples, sequences, seqlens
+    return inputs, targets

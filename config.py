@@ -7,7 +7,7 @@ class Config:
     """
     num_final_features = 221
 
-    batch_size = 16 # 16
+    batch_size = 1 # 16
     output_size = num_final_features * 2
     num_hidden = 128
 

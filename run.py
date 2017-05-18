@@ -39,11 +39,8 @@ if __name__ == "__main__":
     dev_input = np.load(DIR + 'dev_input_batch.npy')
     dev_target = np.load(DIR + 'dev_target_batch.npy')
 
-    # train_feature_minibatches, train_labels_minibatches, train_seqlens_minibatches = make_batches(train_dataset,
-    #                                                                                               batch_size=Config.batch_size)
-    # val_feature_minibatches, val_labels_minibatches, val_seqlens_minibatches = make_batches(train_dataset,
-    #                                                                                         batch_size=len(
-    #                                                                                             val_dataset[0]))
+    train_feature_minibatches, train_target_minibatches = make_batches(train_input, train_target, batch_size=Config.batch_size)
+    dev_feature_minibatches, dev_target_minibatches = make_batches(dev_input, dev_target, batch_size=Config.batch_size)
 
     # def pad_all_batches(batch_feature_array):
     #     for batch_num in range(len(batch_feature_array)):
@@ -53,8 +50,8 @@ if __name__ == "__main__":
     # train_feature_minibatches = pad_all_batches(train_feature_minibatches)
     # val_feature_minibatches = pad_all_batches(val_feature_minibatches)
 
-    # num_examples = np.sum([batch.shape[0] for batch in train_feature_minibatches])
-    # num_batches_per_epoch = int(math.ceil(num_examples / Config.batch_size))
+    num_examples = np.sum([batch.shape[0] for batch in train_feature_minibatches])
+    num_batches_per_epoch = int(math.ceil(num_examples / Config.batch_size))
 
     with tf.Graph().as_default():
         model = SeparationModel()
@@ -80,10 +77,10 @@ if __name__ == "__main__":
                 start = time.time()
 
                 for batch in random.sample(range(num_batches_per_epoch), num_batches_per_epoch):
-                    cur_batch_size = len(train_inputs[batch])
+                    cur_batch_size = len(train_target_minibatches[batch])
 
                     batch_cost, summary = model.train_on_batch(session, train_feature_minibatches[batch],
-                                                                          train_labels_minibatches[batch], train=True)
+                                                               train_target_minibatches[batch], train=True)
                     total_train_cost += batch_cost * cur_batch_size
 
                     train_writer.add_summary(summary, step_ii)
@@ -91,8 +88,8 @@ if __name__ == "__main__":
 
                 train_cost = total_train_cost / num_examples
 
-                val_batch_cost, _ = model.train_on_batch(session, val_feature_minibatches[0],
-                                                                        val_labels_minibatches[0], train=False)
+                val_batch_cost, _ = model.train_on_batch(session, dev_feature_minibatches[0],
+                                                         dev_target_minibatches[0], train=False)
 
                 log = "Epoch {}/{}, train_cost = {:.3f}, train_ed = {:.3f}, val_cost = {:.3f}, val_ed = {:.3f}, time = {:.3f}"
                 print(
