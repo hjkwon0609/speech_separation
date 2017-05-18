@@ -34,13 +34,12 @@ if __name__ == "__main__":
 
     logs_path = "tensorboard/" + strftime("%Y_%m_%d_%H_%M_%S", gmtime())
 
+    DIR = 'data/processed/'
+
     train_input = np.load(DIR + 'train_input_batch.npy')
     train_target = np.load(DIR + 'train_target_batch.npy')
     dev_input = np.load(DIR + 'dev_input_batch.npy')
     dev_target = np.load(DIR + 'dev_target_batch.npy')
-
-    train_feature_minibatches, train_target_minibatches = make_batches(train_input, train_target, batch_size=Config.batch_size)
-    dev_feature_minibatches, dev_target_minibatches = make_batches(dev_input, dev_target, batch_size=Config.batch_size)
 
     # def pad_all_batches(batch_feature_array):
     #     for batch_num in range(len(batch_feature_array)):
