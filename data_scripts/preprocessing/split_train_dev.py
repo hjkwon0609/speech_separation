@@ -33,7 +33,7 @@ def pad_data(data):
 	new_data = np.zeros((num_samples, max_rows_in_sample, num_cols_in_row))
 	for i, sample in enumerate(data):
 		for j, row in enumerate(sample):
-			num_rows = len(row)
+			num_rows = len(sample)
 			print(row)
 			for k, c in enumerate(row):
 				new_data[i][max_rows_in_sample - num_rows + j][k] = c
@@ -96,8 +96,12 @@ if __name__ == '__main__':
 	# dev_padded_clean = pad_data(dev_clean)
 	# dev_padded_noise = pad_data(dev_noise)
 
+	# print('train_padded_clean.shape: '% (train_padded_clean.shape))
+
 	train_target = np.concatenate((train_padded_clean, train_padded_noise), axis=1)
 	dev_target = np.concatenate((dev_padded_clean, dev_padded_noise), axis=1)
+
+	# print('train_target.shape: '% (train_targt.shape))
 
 	train_input_batches, train_target_batches = create_batch(train_padded_input, train_target, Config.batch_size)
 	dev_input_batches, dev_target_batches = create_batch(dev_padded_input, dev_target, Config.batch_size)
