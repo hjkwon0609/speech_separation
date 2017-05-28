@@ -16,10 +16,11 @@ if __name__ == '__main__':
 	noise_data = [wavfile.read(INPUT_NOISE_DIR + noise)[1] for noise in os.listdir(INPUT_NOISE_DIR) if noise[-4:] == '.wav']
 	noise_data = noise_data[:5]
 
+	batch_size = 100
+	curr = 0
+	curr_batch = 0
+
 	for i, clean in enumerate(os.listdir(INPUT_CLEAN_DIR)):
-		if i % 100 == 0:
-			np.savez(OUTPUT_DIR + 'data', processed_data)
-			print('Saved checkpoint for iteration %d' % (i))
 			
 		if clean[-4:] == '.wav':
 			rate_clean, data_clean = wavfile.read(INPUT_CLEAN_DIR + clean)
@@ -38,7 +39,17 @@ if __name__ == '__main__':
 				# Sx_target = np.concatenate((Sx_clean, Sx_noise), axis=0)
 
 				processed_data.append([Sx_combined, Sx_clean, Sx_noise])
+			
+			curr_batch += 1
+			if curr_batch == batch_size:
+				np.savez('%sdata%d' % (OUTPUT_DIR, curr), processed_data)
+				print('Saved batch curr %d' % (curr))
+				processed_data = []
+				curr += 1
+				curr_batch = 0
+			
 			print('Finished processing %d clean slice files' % (i + 1))
+	# np.savez('%sdata' % (OUTPUT_DIR), processed_data)
 
 	# hkl.dump(processed_data, OUTPUT_DIR + 'data.hkl')
 	
