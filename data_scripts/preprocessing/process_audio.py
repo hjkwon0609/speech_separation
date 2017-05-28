@@ -17,7 +17,11 @@ if __name__ == '__main__':
 	noise_data = noise_data[:5]
 
 	for i, clean in enumerate(os.listdir(INPUT_CLEAN_DIR)):
-		if clean[-4:] == '.wav' and (clean[:2] == 'f2'):
+		if i % 100 == 0:
+			np.savez(OUTPUT_DIR + 'data', processed_data)
+			print('Saved checkpoint for iteration %d' % (i))
+			
+		if clean[-4:] == '.wav':
 			rate_clean, data_clean = wavfile.read(INPUT_CLEAN_DIR + clean)
 			for noise in noise_data:
 				data_noise = noise[:]
@@ -37,4 +41,4 @@ if __name__ == '__main__':
 			print('Finished processing %d clean slice files' % (i + 1))
 
 	# hkl.dump(processed_data, OUTPUT_DIR + 'data.hkl')
-	np.save(OUTPUT_DIR + 'data.npy', processed_data)
+	
