@@ -54,7 +54,9 @@ def pad_data(data):
 
 if __name__ == '__main__':
 
-	processed_data = np.load(DIR + 'data.npz')
+	processed_data = []
+	for i in xrange(4):
+		processed_data.append(np.load('%sdata%d.npz' % (DIR, i)))
 	print('finished loading data')
 	num_data = len(processed_data)
 
