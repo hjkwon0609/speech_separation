@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     data = np.load(DIR + 'data0.npz')['arr_0']
     train_input, train_clean, train_noise = zip(data)
-    train_target = np.concatenate((train_clean,train_noise), axis=1)
+    train_target = np.concatenate((train_clean,train_noise), axis=3)
     dev_input = train_input
     dev_target = train_target
     
@@ -137,7 +137,7 @@ if __name__ == "__main__":
                 # train_cost = total_train_cost / num_examples
                 train_cost = total_train_cost
 
-                val_batch_cost, _ = model.train_on_batch(session, dev_input[0], dev_target, train=False)
+                val_batch_cost, _ = model.train_on_batch(session, dev_input[0], dev_target[0], train=False)
 
                 log = "Epoch {}/{}, train_cost = {:.3f}, val_cost = {:.3f}, time = {:.3f}"
                 print(
