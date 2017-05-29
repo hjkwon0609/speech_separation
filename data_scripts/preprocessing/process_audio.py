@@ -4,7 +4,8 @@ import os
 import numpy as np
 from scipy import signal
 from create_wavefile import *
-import hickle as hkl
+# import hickle as hkl
+import stft
 
 INPUT_NOISE_DIR = '../../data/raw_noise/'
 INPUT_CLEAN_DIR = '../../data/sliced_clean/'
@@ -50,9 +51,12 @@ if __name__ == '__main__':
 
 				data_combined = np.array([(s1/2 + s2/2) for (s1, s2) in zip(data_clean, data_noise)])
 
-				Sx_clean = pretty_spectrogram(data_clean.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
-				Sx_noise = pretty_spectrogram(data_noise.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
-				Sx_combined = pretty_spectrogram(data_combined.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
+				Sx_clean = stft.spectrogram(data_clean).transpose()
+				Sx_noise = stft.spectrogram(data_noise).transpose()
+				Sx_combined = stft.spectrogram(data_combined).transpose()
+				# Sx_clean = pretty_spectrogram(data_clean.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
+				# Sx_noise = pretty_spectrogram(data_noise.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
+				# Sx_combined = pretty_spectrogram(data_combined.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
 
 				# Sx_target = np.concatenate((Sx_clean, Sx_noise), axis=0)
 				# print(clean)
