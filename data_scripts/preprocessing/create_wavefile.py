@@ -17,7 +17,7 @@ highcut = 13000
 # 882
 fft_size = 882
 # 16
-step_size = fft_size / 16
+step_size = fft_size / 2
 
 
 DATA_DIR = '../../data/sliced_clean/'

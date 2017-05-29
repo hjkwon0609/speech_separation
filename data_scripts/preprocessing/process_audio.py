@@ -34,7 +34,7 @@ if __name__ == '__main__':
 	noise_data = [wavfile.read(INPUT_NOISE_DIR + noise)[1] for noise in os.listdir(INPUT_NOISE_DIR) if noise[-4:] == '.wav']
 	noise_data = noise_data[:5]
 
-	batch_size = 100
+	batch_size = 30
 	curr = 0
 	curr_batch = 0
 
@@ -55,6 +55,8 @@ if __name__ == '__main__':
 				Sx_combined = pretty_spectrogram(data_combined.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
 
 				# Sx_target = np.concatenate((Sx_clean, Sx_noise), axis=0)
+				# print(clean)
+				# print (Sx_clean.shape)
 
 				processed_data.append([Sx_combined, Sx_clean, Sx_noise])
 			
@@ -73,8 +75,11 @@ if __name__ == '__main__':
 				processed_data = []
 				curr += 1
 				curr_batch = 0
+				break
+
 			
 			print('Finished processing %d clean slice files' % (i + 1))
+
 	# np.savez_compressed('%sdata' % (OUTPUT_DIR), processed_data)
 
 	# hkl.dump(processed_data, OUTPUT_DIR + 'data.hkl')
