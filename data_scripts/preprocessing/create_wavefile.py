@@ -255,14 +255,14 @@ def xcorr_offset(x1, x2):
 if __name__ == "__main__":
 	for f in os.listdir(DATA_DIR):
 		# if f[-4:] == '.wav':
-		if f == 'f1_script1_clean_192.wav':
+		if f == 'f1_script1_clean_193.wav':
 			rate, data = wavfile.read(DATA_DIR + f)
 			data = butter_bandpass_filter(data, lowcut, highcut, rate, order=1)
 			# print "Length in time (s): ", np.shape(data)[0] / float(rate)
 
 			wav_spectrogram = pretty_spectrogram(data.astype('float64'), fft_size=fft_size, step_size=step_size, thresh=spec_thresh)
-			# print wav_spectrogram.shape
-			# print wav_spectrogram
+			print wav_spectrogram.shape
+			print wav_spectrogram
 
 			recovered_audio_orig = invert_pretty_spectrogram(wav_spectrogram, fft_size=fft_size, step_size=step_size, log=True, n_iter=10)
 			multiplier = la.norm(data) / la.norm(recovered_audio_orig)
