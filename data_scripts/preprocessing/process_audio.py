@@ -34,7 +34,7 @@ if __name__ == '__main__':
 	noise_data = [wavfile.read(INPUT_NOISE_DIR + noise)[1] for noise in os.listdir(INPUT_NOISE_DIR) if noise[-4:] == '.wav']
 	noise_data = noise_data[:5]
 
-	batch_size = 30
+	batch_size = 200
 	curr = 0
 	curr_batch = 0
 
