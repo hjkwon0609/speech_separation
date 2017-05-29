@@ -56,32 +56,34 @@ if __name__ == "__main__":
     DIR = 'data/processed/'
     TESTING_MODE = True
 
-    train_input_batch_name = 'train_input_batch.npy'
-    train_target_batch_name = 'train_target_batch.npy'
-    dev_input_batch_name = 'dev_input_batch.npy'
-    dev_target_batch_name = 'dev_target_batch.npy'
+    # train_input_batch_name = 'train_input_batch.npy'
+    # train_target_batch_name = 'train_target_batch.npy'
+    # dev_input_batch_name = 'dev_input_batch.npy'
+    # dev_target_batch_name = 'dev_target_batch.npy'
 
-    if TESTING_MODE:
-        train_input_batch_name = 'smaller_' + train_input_batch_name
-        train_target_batch_name = 'smaller_' + train_target_batch_name
-        dev_input_batch_name = 'smaller_' + dev_input_batch_name
-        dev_target_batch_name = 'smaller_' + dev_target_batch_name
+    # if TESTING_MODE:
+    #     train_input_batch_name = 'smaller_' + train_input_batch_name
+    #     train_target_batch_name = 'smaller_' + train_target_batch_name
+    #     dev_input_batch_name = 'smaller_' + dev_input_batch_name
+    #     dev_target_batch_name = 'smaller_' + dev_target_batch_name
 
-    train_input = np.load(DIR + train_input_batch_name)
-    train_target = np.load(DIR + train_target_batch_name)
-    dev_input = np.load(DIR + dev_input_batch_name)
-    dev_target = np.load(DIR + dev_target_batch_name)
+    data = np.load(DIR + 'data0.npz')['arr_0']
+    train_input, train_clean, train_noise = zip(data)
+    train_target = np.concatenate((train_clean,train_noise), axis=1)
+    dev_input = train_input
+    dev_target = train_target
+    
 
-    train_input = clean_data(train_input)
-    train_target = clean_data(train_target)
-    dev_input = clean_data(dev_input)
-    dev_target = clean_data(dev_target)
+    # train_input = clean_data(train_input)
+    # train_target = clean_data(train_target)
+    # dev_input = clean_data(dev_input)
+    # dev_target = clean_data(dev_target)
     # train_input = np.asarray((np.asarray((np.asarray((np.asarray((i for i in r), dtype=np.float64) for r in sample), dtype=np.float64) for sample in batch), dtype=np.float64) for batch in train_input), dtype=np.float64)
     # train_target = np.asarray((np.asarray((np.asarray((np.asarray((i for i in r), dtype=np.float64) for r in sample), dtype=np.float64) for sample in batch), dtype=np.float64) for batch in train_target), dtype=np.float64)
     # dev_input = np.asarray((np.asarray((np.asarray((np.asarray((i for i in r), dtype=np.float64) for r in sample), dtype=np.float64) for sample in batch), dtype=np.float64) for batch in dev_input), dtype=np.float64)
     # dev_target = np.asarray((np.asarray((np.asarray((np.asarray((i for i in r), dtype=np.float64) for r in sample), dtype=np.float64) for sample in batch), dtype=np.float64) for batch in dev_target), dtype=np.float64)
 
-    print(train_input.shape)
+    # print(train_input.shape)
 
     # def pad_all_batches(batch_feature_array):
     #     for batch_num in range(len(batch_feature_array)):
