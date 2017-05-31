@@ -15,6 +15,7 @@ from time import gmtime, strftime
 
 from config import Config
 from model import SeparationModel
+import h5py
 
 
 def clean_data(data):
@@ -34,6 +35,16 @@ def clean_data(data):
                 for l, c in enumerate(r):
                     new_data[i][j][k][l]
     return new_data
+
+def create_batch(input_data, target_data, batch_size):
+    input_batches = []
+    target_batches = []
+    
+    for i in xrange(0, len(target_data), batch_size):
+        input_batches.append(input_data[i:i + batch_size])
+        target_batches.append(target_data[i:i + batch_size])
+    
+    return input_batches, target_batches
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser()
@@ -67,13 +78,33 @@ if __name__ == "__main__":
     #     dev_input_batch_name = 'smaller_' + dev_input_batch_name
     #     dev_target_batch_name = 'smaller_' + dev_target_batch_name
 
-    data = np.load(DIR + 'data0.npz')['arr_0']
-    train_input, train_clean, train_noise = zip(data)
-    train_target = np.concatenate((train_clean,train_noise), axis=3)
-    dev_input = train_input
-    dev_target = train_target
-    
+    data = h5py.File('%sdata%d' % (DIR, 0))['data'].value
+    np.append(data, h5py.File('%sdata%d' % (DIR, 1))['data'].value)
 
+    combined, clean, noise = zip(data)
+    combined = combined[0]
+    clean = clean[0]
+    noise = noise[0]
+    
+    target = np.concatenate((clean,noise), axis=2)
+
+    num_data = len(combined)
+    dev_ix = set(random.sample(xrange(num_data), num_data / 5))
+
+    train_input = [s for i, s in enumerate(combined) if i not in dev_ix]
+    train_target = [s for i, s in enumerate(target) if i not in dev_ix]
+    dev_input = [s for i, s in enumerate(combined) if i in dev_ix]
+    dev_target = [s for i, s in enumerate(target) if i in dev_ix]
+
+    # data = np.load(DIR + 'data0.npz')['arr_0']
+    # train_input, train_clean, train_noise = zip(train_data)
+    # train_target = np.concatenate((train_clean,train_noise), axis=3)
+    # dev_input, dev_clean, dev_noise = zip(dev_data)
+    # dev_target = np.concatenate((dev_clean,dev_noise), axis=3)
+
+    train_input_batch, train_target_batch = create_batch(train_input, train_target, Config.batch_size)
+    dev_input_batch, dev_target_batch = create_batch(dev_input, dev_target, Config.batch_size)
+    
     # train_input = clean_data(train_input)
     # train_target = clean_data(train_target)
     # dev_input = clean_data(dev_input)
@@ -95,6 +126,11 @@ if __name__ == "__main__":
 
     # num_examples = np.sum([train_input.shape[0] for batch in train_feature_minibatches])
     # num_batches_per_epoch = int(math.ceil(num_examples / Config.batch_size))
+
+    num_data = np.sum(len(batch) for batch in train_input_batch)
+    num_batches_per_epoch = int(math.ceil(num_data / Config.batch_size))
+    num_dev_data = np.sum(len(batch) for batch in dev_input_batch)
+    num_dev_batches_per_epoch = int(math.ceil(num_dev_data / Config.batch_size))
 
     with tf.Graph().as_default():
         model = SeparationModel()
@@ -119,25 +155,44 @@ if __name__ == "__main__":
                 total_train_cost = total_train_wer = 0
                 start = time.time()
 
-                input_cost, summary = model.train_on_batch(session, train_input[0], train_target[0], train=True)
-                total_train_cost += input_cost
+                for batch in random.sample(range(num_batches_per_epoch), num_batches_per_epoch):
+                    cur_batch_size = len(train_target_batch[batch])
 
-                train_writer.add_summary(summary, step_ii)
-                step_ii += 1
-                # for batch in random.sample(range(num_batches_per_epoch), num_batches_per_epoch):
-                #     cur_batch_size = len(train_target_minibatches[batch])
+                    batch_cost, summary = model.train_on_batch(session, 
+                                                            train_input_batch[batch],
+                                                            train_target_batch[batch], 
+                                                            train=True)
+                    # print('logits: %s' % (logits))
+                    total_train_cost += batch_cost * cur_batch_size
+                    train_writer.add_summary(summary, step_ii)
 
-                #     batch_cost, summary = model.train_on_batch(session, train_feature_minibatches[batch],
-                #                                                train_target_minibatches[batch], train=True)
-                #     total_train_cost += batch_cost * cur_batch_size
+                    step_ii += 1
+                # input_cost, summary = model.train_on_batch(session, train_input_batch, train_target_batch, train=True)
+                # total_train_cost += input_cost
 
-                #     train_writer.add_summary(summary, step_ii)
-                #     step_ii += 1
+                # train_writer.add_summary(summary, step_ii)
+                # step_ii += 1
 
-                # train_cost = total_train_cost / num_examples
                 train_cost = total_train_cost
 
-                val_batch_cost, _ = model.train_on_batch(session, dev_input[0], dev_target[0], train=False)
+                num_dev_batches = len(dev_target_batch)
+                total_batch_cost = 0
+                total_batch_examples = 0
+
+                # val_batch_cost, _ = model.train_on_batch(session, dev_input_batch[0], dev_target_batch[0], train=False)
+                for batch in random.sample(range(num_dev_batches_per_epoch), num_dev_batches_per_epoch):
+                    cur_batch_size = len(dev_target_batch[batch])
+                    total_batch_examples += cur_batch_size
+
+                    _val_batch_cost, _ = model.train_on_batch(session, dev_input_batch[batch], dev_target_batch[batch], train=False)
+
+                    total_batch_cost += cur_batch_size * _val_batch_cost
+
+                val_batch_cost = None
+                try:
+                    val_batch_cost = total_batch_cost / total_batch_examples
+                except ZeroDivisionError:
+                    val_batch_cost = 0
 
                 log = "Epoch {}/{}, train_cost = {:.3f}, val_cost = {:.3f}, time = {:.3f}"
                 print(
