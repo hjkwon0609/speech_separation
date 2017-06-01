@@ -25,7 +25,6 @@ def pad_data(data):
 	for i, sample in enumerate(data):
 		for j, row in enumerate(sample):
 			num_rows = len(sample)
-			# print(row)
 			for k, c in enumerate(row):
 				new_data[i][max_rows_in_sample - num_rows + j][k] = c
 	return new_data

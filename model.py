@@ -158,18 +158,18 @@ class SeparationModel():
         self.add_loss_op()
         self.add_training_op()
         self.add_summary_op()
-        
+
 
     def train_on_batch(self, session, train_inputs_batch, train_targets_batch, train=True):
         feed = self.create_feed_dict(train_inputs_batch, train_targets_batch)
-        batch_cost, summary = session.run([self.loss, self.merged_summary_op], feed)
+        output, batch_cost, summary = session.run([self.output, self.loss, self.merged_summary_op], feed)
 
         if math.isnan(batch_cost): # basically all examples in this batch have been skipped 
             return 0
         if train:
             _ = session.run([self.optimizer], feed)
 
-        return batch_cost, summary
+        return output, batch_cost, summary
 
     def print_results(self, train_inputs_batch, train_targets_batch):
         train_feed = self.create_feed_dict(train_inputs_batch, train_targets_batch)
