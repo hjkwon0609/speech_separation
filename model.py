@@ -97,32 +97,29 @@ class SeparationModel():
             * tf.contrib.rnn.GRUCell, tf.contrib.rnn.MultiRNNCell and tf.nn.dynamic_rnn are of interest
         """
 
-        gru_cell = tf.contrib.rnn.GRUCell(Config.output_size, input_size=Config.num_final_features, activation=tf.nn.relu)
-
+        cell = None
         if Config.num_layers > 1:
             # multi layer
-            a = 1
+            cell = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.GRUCell(Config.output_size, 
+            input_size=Config.num_final_features) for _ in range(Config.num_layers)], state_is_tuple=False)
+        else:
+            cell = tf.contrib.rnn.GRUCell(Config.output_size, input_size=Config.num_final_features, activation=tf.nn.relu)
 
-        output, state = tf.nn.dynamic_rnn(gru_cell, self.inputs_placeholder, dtype=tf.float32)
+        output, state = tf.nn.dynamic_rnn(cell, self.inputs_placeholder, dtype=tf.float32)
 
+        # output_seq_length = tf.shape(output)[1]
+        # last_output = output[:,output_seq_length - 1,:]
+        
         self.output = output
+        # self.output = tf.Print(self.output, [self.output, tf.shape(self.output)])
 
 
     def add_loss_op(self):
-        """Adds Ops for the loss function to the computational graph. 
-
-        - Use tf.nn.ctc_loss to calculate the CTC loss for each example in the batch. You'll need self.logits,
-          self.targets_placeholder, self.seq_lens_placeholder for this. Set variable ctc_loss to
-          the output of tf.nn.ctc_loss
-        - You will need to first tf.transpose the data so that self.logits is shaped [max_timesteps, batch_s, 
-          num_classes]. 
-        - Configure tf.nn.ctc_loss so that identical consecutive labels are allowed
-        - Compute L2 regularization cost for all trainable variables. Use tf.nn.l2_loss(var). 
-
-        """
         l2_cost = 0.0
 
+        # self.output = tf.Print(self.output, [self.output])
         squared_error = tf.norm(self.output - self.targets_placeholder, ord=2)
+        # squared_error = tf.Print(squared_error, [squared_error])
         self.loss = Config.l2_lambda * l2_cost + squared_error
 
         tf.summary.scalar("squared_error", squared_error)       
@@ -161,18 +158,18 @@ class SeparationModel():
         self.add_loss_op()
         self.add_training_op()
         self.add_summary_op()
-        
+
 
     def train_on_batch(self, session, train_inputs_batch, train_targets_batch, train=True):
         feed = self.create_feed_dict(train_inputs_batch, train_targets_batch)
-        batch_cost, summary = session.run([self.loss, self.merged_summary_op], feed)
+        output, batch_cost, summary = session.run([self.output, self.loss, self.merged_summary_op], feed)
 
         if math.isnan(batch_cost): # basically all examples in this batch have been skipped 
             return 0
         if train:
             _ = session.run([self.optimizer], feed)
 
-        return batch_cost, summary
+        return output, batch_cost, summary
 
     def print_results(self, train_inputs_batch, train_targets_batch):
         train_feed = self.create_feed_dict(train_inputs_batch, train_targets_batch)
