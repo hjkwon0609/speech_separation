@@ -3,11 +3,13 @@ import argparse
 import math
 import random
 import os
+import distutils.util
 # uncomment this line to suppress Tensorflow warnings
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 import numpy as np
 from six.moves import xrange as range
+from scipy.io import wavfile
 
 from utils import *
 import pdb
@@ -16,6 +18,8 @@ from time import gmtime, strftime
 from config import Config
 from model import SeparationModel
 import h5py
+from stft.types import SpectrogramArray
+import stft
 
 
 def clean_data(data):
@@ -46,7 +50,7 @@ def create_batch(input_data, target_data, batch_size):
     
     return input_batches, target_batches
 
-def model_train():
+def model_train(freq_weighted):
     logs_path = "tensorboard/" + strftime("%Y_%m_%d_%H_%M_%S", gmtime())
 
     DIR = 'data/processed/'
@@ -63,6 +67,7 @@ def model_train():
     target = np.concatenate((clean,noise), axis=2)
 
     num_data = len(combined)
+    random.seed(1)
     dev_ix = set(random.sample(xrange(num_data), num_data / 5))
 
     train_input = [s for i, s in enumerate(combined) if i not in dev_ix]
@@ -79,7 +84,7 @@ def model_train():
     num_dev_batches_per_epoch = int(math.ceil(num_dev_data / Config.batch_size))
 
     with tf.Graph().as_default():
-        model = SeparationModel()
+        model = SeparationModel(freq_weighted=freq_weighted)
         init = tf.global_variables_initializer()
 
         saver = tf.train.Saver(tf.trainable_variables())
@@ -148,42 +153,101 @@ def model_train():
                 #     model.print_results(train_feature_minibatches[batch_ii], train_labels_minibatches[batch_ii])
 
                 if (curr_epoch + 1) % 10 == 0:
-                    saver.save(session, 'checkpoints/%dlayer_%flr_model' % (Config.num_layers, Config.lr), global_step=curr_epoch + 1)
+                    checkpoint_name = 'checkpoints/%dlayer_%flr_model' % (Config.num_layers, Config.lr)
+                    if freq_weighted:
+                        checkpoint_name = checkpoint_name + '_freq_weighted'
+                    saver.save(session, checkpoint_name, global_step=curr_epoch + 1)
+
 
 def model_test(test_input):
 
-    test_data = h5py.File(test_input)['data'].value
-    test_data = [test_data]  # make data a batch of 1
+    test_rate, test_audio = wavfile.read(test_input)
+    test_spec = stft.spectrogram(test_audio)
 
-    with tf.Session() as session:
+    test_data = np.array([test_spec.transpose() / 100000])  # make data a batch of 1
+
+    with tf.Graph().as_default():
         model = SeparationModel()
+        saver = tf.train.Saver(tf.trainable_variables())
+        
+        with tf.Session() as session:
+            ckpt = tf.train.get_checkpoint_state('checkpoints/')
+            if ckpt: #and tf.gfile.Exists(ckpt.model_checkpoint_path):
+                print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
+                saver.restore(session, ckpt.model_checkpoint_path)
+            else:
+                print("Created model with fresh parameters.")
+                session.run(tf.initialize_all_variables())
 
-        ckpt = tf.train.get_checkpoint_state('checkpoints/%dlayer_%flr_model' % (Config.num_layers, Config.lr))
-        if ckpt and gfile.Exists(ckpt.model_checkpoint_path):
-            print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
-            model.saver.restore(session, ckpt.model_checkpoint_path)
-        else:
-            print("Created model with fresh parameters.")
-            session.run(tf.initialize_all_variables())
+            test_data_shape = np.shape(test_data)
+            dummy_target = np.zeros((test_data_shape[0], test_data_shape[1], 2 * test_data_shape[2]))
 
-        session.run(init)
+            output, _, _ = model.train_on_batch(session, test_data, dummy_target, train=False)
 
-        test_data_shape = tf.shape(test_data)
-        dummy_target = tf.zeros(test_data_shape[0], test_data_shape[1], 2 * test_data_shape[2])
+            num_freq_bin = output.shape[2] / 2
+            clean_output = output[0,:,:num_freq_bin]
+            noise_output = output[0,:,num_freq_bin:]
 
-        output, _, _ = model.train_on_batch(session, test_data, dummy_target, train=False)
+            clean_mask, noise_mask = create_mask(clean_output, noise_output)
 
-    console.log(output)
+            clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), test_spec), test_spec) 
+            noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), test_spec), test_spec)
 
+            clean_wav = stft.ispectrogram(clean_spec)
+            noise_wav = stft.ispectrogram(noise_spec)
+
+            writeWav('data/test_combined/output_clean.wav', 44100, clean_wav)
+            writeWav('data/test_combined/output_noise.wav', 44100, noise_wav)
+
+def writeWav(fn, fs, data):
+    data = data * 1.5 / np.max(np.abs(data))
+    wavfile.write(fn, fs, data)
+
+
+def create_mask(clean_output, noise_output, hard=True):
+    clean_mask = np.zeros(clean_output.shape)
+    noise_mask = np.zeros(noise_output.shape)
+
+    if hard:
+        for i in range(len(clean_output)):
+            for j in range(len(clean_output[0])):
+                if abs(clean_output[i][j]) < abs(noise_output[i][j]):
+                    noise_mask[i][j] = 1.0
+                else:
+                    clean_mask[i][j] = 1.0
+    else:
+        for i in range(len(clean_output)):
+            for j in range(len(clean_output[0])):
+                clean_mask[i][j] = abs(clean_output[i][j]) / (abs(clean_output[i][j]) + abs(noise_output[i][j]))
+                noise_mask[i][j] = abs(noise_output[i][j]) / (abs(clean_output[i][j]) + abs(noise_output[i][j]))
+
+
+    return clean_mask, noise_mask
+
+def createSpectrogram(arr, orig):
+    x = SpectrogramArray(arr, stft_settings={
+                                'framelength': orig.stft_settings['framelength'],
+                                'hopsize': orig.stft_settings['hopsize'],
+                                'overlap': orig.stft_settings['overlap'],
+                                'centered': orig.stft_settings['centered'],
+                                'window': orig.stft_settings['window'],
+                                'halved': orig.stft_settings['halved'],
+                                'transform': orig.stft_settings['transform'],
+                                'padding': orig.stft_settings['padding'],
+                                'outlength': orig.stft_settings['outlength'],
+                                }
+                        )
+    return x
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train', nargs='?', default=True, type=bool)
-    parser.add_argument('--test_input', nargs='?', default=None, type=str)
+    parser.add_argument('--train', nargs='?', default=True, type=distutils.util.strtobool)
+    parser.add_argument('--test_input', nargs='?', default='data/test_combined/combined.wav', type=str)
+    parser.add_argument('--freq_weighted', nargs='?', default=True, type=distutils.util.strtobool)
     args = parser.parse_args()
 
     if args.train:
-        model_train()
+        model_train(args.freq_weighted)
     else:
         model_test(args.test_input)
 

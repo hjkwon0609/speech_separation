@@ -114,11 +114,24 @@ class SeparationModel():
         # self.output = tf.Print(self.output, [self.output, tf.shape(self.output)])
 
 
-    def add_loss_op(self):
+    def add_loss_op(self, freq_weighted):
         l2_cost = 0.0
 
-        # self.output = tf.Print(self.output, [self.output])
-        squared_error = tf.norm(self.output - self.targets_placeholder, ord=2)
+        weighted_differences = self.output - self.targets_placeholder
+
+        if freq_weighted:
+            num_freq_bins = Config.num_final_features
+            frequencies = np.array([2.0 * 180 * i / (num_freq_bins - 1) for i in xrange(num_freq_bins)])
+            frequencies[0] = 2.0 * 180 / (num_freq_bins - 1) / 2  # 0th frequency threshold is computed at 3/4th of the frequency range
+            ath_val = 3.64 * np.power(1000 / frequencies, 0.8) - 6.5 * np.exp(-0.6 * np.power(frequencies / 1000 - 3.3, 2)) + np.power(0.1, 3) * np.power(frequencies / 1000, 4)
+
+            ath_shifted = (1 - np.amin(ath_val)) + ath_val  # shift all ath vals so that min is 1
+            weights = np.tile(1 / ath_shifted, 2)
+
+            # self.output = tf.Print(self.output, [self.output])
+            weighted_differences = weights * (self.output - self.targets_placeholder)
+
+        squared_error = tf.norm(weighted_differences, ord=2)
         # squared_error = tf.Print(squared_error, [squared_error])
         self.loss = Config.l2_lambda * l2_cost + squared_error
 
@@ -152,10 +165,10 @@ class SeparationModel():
 
 
     # This actually builds the computational graph 
-    def build(self):
+    def build(self, freq_weighted):
         self.add_placeholders()
         self.add_prediction_op()
-        self.add_loss_op()
+        self.add_loss_op(freq_weighted)
         self.add_training_op()
         self.add_summary_op()
 
@@ -176,8 +189,8 @@ class SeparationModel():
         train_first_batch_preds = session.run(self.decoded_sequence, feed_dict=train_feed)
         compare_predicted_to_true(train_first_batch_preds, train_targets_batch)        
 
-    def __init__(self):
-        self.build()
+    def __init__(self, freq_weighted=None):
+        self.build(freq_weighted)
 
     
 

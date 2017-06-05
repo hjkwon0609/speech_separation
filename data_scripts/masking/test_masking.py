@@ -7,10 +7,11 @@ from numpy.linalg import svd
 from scipy.io import wavfile
 from stft.types import SpectrogramArray
 import pickle
+import scipy
 
-raw1 = "jungle_sound_effect.wav"
-raw2 = "rain in car.wav"
-merged = "merged.wav"
+raw1 = '../../data/sliced_clean/f10_script2_clean_113.wav'
+raw2 = "../../data/raw_noise/noise11_1.wav"
+merged = '../../data/test_combined/combined.wav'
 m_dir = "results/"
 separated_dir = "results/"
 
@@ -37,10 +38,13 @@ def createSpectrogram(arr, orig):
 	return x
 
 def writeWav(fn, fs, data):
-		data = data * 1.5 / np.max(np.abs(data))
+		data = data# * 1.5 / np.max(np.abs(data))
 		wavfile.write(fn, fs, data)
 
+
+
 def createMatrix():
+	# spectrogram_arguments = {'framelength': 512, 'overlap': 512, 'window': scipy.signal.hamming(512)}
 	def saveFile(fn, data):
 		f = open(fn, 'wb')
 		pickle.dump(data, f)
@@ -52,8 +56,8 @@ def createMatrix():
 	data1 = data1[:minlen]
 	data2 = data2[:minlen]
 
-	spec1 = stft.spectrogram(data1, framelength=512)
-	spec2 = stft.spectrogram(data2, framelength=512)
+	spec1 = stft.spectrogram(data1)
+	spec2 = stft.spectrogram(data2)
 	
 	# Reduce dimension
 	spec1 = squeeze(spec1)
@@ -80,7 +84,7 @@ def createMatrix():
 	# 		b[i][j] = abs(spec2[i][j]) / (abs(spec1[i][j]) + abs(spec2[i][j]))
 
 	fs, data = wavfile.read(merged)
-	spec = stft.spectrogram(data, framelength=512)
+	spec = stft.spectrogram(data)
 	spec = squeeze(spec)
 
 	output_a = createSpectrogram(np.multiply(a, spec), spec)
