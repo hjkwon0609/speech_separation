@@ -251,7 +251,3 @@ if __name__ == "__main__":
     else:
         model_test(args.test_input)
 
-    
-
-
-

@@ -8,3 +8,7 @@ frequencies[0] = 2.0 * 180 / num_freq_bins / 2 * 22050 / 360 # 0th frequency thr
 weights = 3.64 * np.power(1000 / frequencies, 0.8) - 6.5 * np.exp(-0.6 * np.power(frequencies / 1000 - 3.3, 2)) + np.power(0.1, 3) * np.power(frequencies / 1000, 4)
 print(frequencies)
 print(weights)
+
+normalized = np.full(weights.shape, np.sqrt(np.sum(np.power(weights, 2)) / num_freq_bins))
+print(np.linalg.norm(weights, ord=2))
+print(np.linalg.norm(normalized, ord=2))
