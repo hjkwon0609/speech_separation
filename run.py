@@ -298,7 +298,7 @@ if __name__ == "__main__":
     parser.add_argument('--test_batch', nargs='?', default=False, type=distutils.util.strtobool)
     args = parser.parse_args()
 
-    if test_batch:
+    if args.test_batch:
         model_batch_test(args.test_batch)
     elif args.train:
         model_train(args.freq_weighted)
