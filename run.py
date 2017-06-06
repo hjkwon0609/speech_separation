@@ -21,6 +21,8 @@ import h5py
 from stft.types import SpectrogramArray
 import stft
 
+from evaluate import bss_eval_sources
+
 
 def clean_data(data):
     # hack for now so that I don't have to preprocess again
@@ -241,6 +243,9 @@ def model_batch_test(test_input):
 
                 clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), test_spec), test_spec) 
                 noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), test_spec), test_spec)
+
+                sdr, sir, sar, _ = bss_eval_sources(clean, clean_spec)
+                print("Eval metrics for sdr: %s, sir: %s, sar: %s", sdr, sir, sar)
 
                 clean_wav = stft.ispectrogram(clean_spec)
                 noise_wav = stft.ispectrogram(noise_spec)
