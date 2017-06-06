@@ -128,18 +128,15 @@ class SeparationModel():
         weights = np.tile(1 / ath_shifted, 2)
 
         if freq_weighted:
-            # self.output = tf.Print(self.output, [self.output])
             weighted_differences = weights * weighted_differences
         else:
             normalized = np.full(weights.shape, np.sqrt(np.sum(np.power(weights, 2)) / num_freq_bins))
             weighted_differences = normalized * weighted_differences
 
         squared_error = tf.norm(weighted_differences, ord=2)
-        # squared_error = tf.Print(squared_error, [squared_error])
         self.loss = Config.l2_lambda * l2_cost + squared_error
 
-        tf.summary.scalar("squared_error", squared_error)       
-        
+        tf.summary.scalar("squared_error", squared_error)
         tf.summary.scalar("loss", self.loss)
 
     def add_training_op(self):

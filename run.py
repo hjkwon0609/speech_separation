@@ -172,7 +172,7 @@ def model_test(test_input):
         
         with tf.Session() as session:
             ckpt = tf.train.get_checkpoint_state('checkpoints/')
-            if ckpt: #and tf.gfile.Exists(ckpt.model_checkpoint_path):
+            if ckpt:
                 print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
                 saver.restore(session, ckpt.model_checkpoint_path)
             else:
@@ -198,6 +198,53 @@ def model_test(test_input):
 
             writeWav('data/test_combined/output_clean.wav', 44100, clean_wav)
             writeWav('data/test_combined/output_noise.wav', 44100, noise_wav)
+
+def model_batch_test(test_input):
+
+    # needed for calling ispectrogram
+    test_rate, test_audio = wavfile.read(test_input)
+    test_spec = stft.spectrogram(test_audio)
+
+    data = h5py.File('%sdata%d' % (DIR, 5))['data'].value
+    
+    combined, clean, noise = zip(data)
+    target = np.concatenate((clean,noise), axis=2)
+
+    combined_batch, target_batch = create_batch(combined, target, Config.batch_size)
+
+    with tf.Graph().as_default():
+        model = SeparationModel()
+        saver = tf.train.Saver(tf.trainable_variables())
+        
+        with tf.Session() as session:
+            ckpt = tf.train.get_checkpoint_state('checkpoints/')
+            if ckpt:
+                print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
+                saver.restore(session, ckpt.model_checkpoint_path)
+            else:
+                print("Created model with fresh parameters.")
+                session.run(tf.initialize_all_variables())
+
+            output, _, _ = model.train_on_batch(session, combined_batch[0], target_batch[0], train=False)
+
+            num_freq_bin = output.shape[2] / 2
+            clean_outputs = output[:,:,:num_freq_bin]
+            noise_outputs = output[:,:,num_freq_bin:]
+
+            num_outputs = len(clean_outputs)
+
+            for i in xrange(num_outputs):
+                clean_output = clean_outputs[i]
+                noise_output = noise_outputs[i]
+                
+                clean_mask, noise_mask = create_mask(clean_output, noise_output)
+
+                clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), test_spec), test_spec) 
+                noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), test_spec), test_spec)
+
+                clean_wav = stft.ispectrogram(clean_spec)
+                noise_wav = stft.ispectrogram(noise_spec)
+
 
 def writeWav(fn, fs, data):
     data = data * 1.5 / np.max(np.abs(data))
@@ -242,12 +289,15 @@ def createSpectrogram(arr, orig):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--train', nargs='?', default=True, type=distutils.util.strtobool)
-    parser.add_argument('--test_input', nargs='?', default='data/test_combined/combined.wav', type=str)
+    parser.add_argument('--test_single_input', nargs='?', default='data/test_combined/combined.wav', type=str)
     parser.add_argument('--freq_weighted', nargs='?', default=True, type=distutils.util.strtobool)
+    parser.add_argument('--test_batch', nargs='?', default=None, type=str)
     args = parser.parse_args()
 
     if args.train:
         model_train(args.freq_weighted)
+    else if test_batch:
+        model_batch_test(args.test_batch)
     else:
-        model_test(args.test_input)
+        model_test(args.test_single_input)
 
