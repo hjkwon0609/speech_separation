@@ -41,7 +41,6 @@ from scipy.signal import fftconvolve
 import collections
 import itertools
 import warnings
-from . import util
 
 
 # The maximum allowable number of sources (prevents insane computational load)
