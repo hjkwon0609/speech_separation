@@ -875,5 +875,5 @@ def evaluate(reference_sources, estimated_sources, **kwargs):
     return scores
 
 
-result = evaluate(reference, estimated)
-print(result)
+# result = evaluate(reference, estimated)
+# print(result)
