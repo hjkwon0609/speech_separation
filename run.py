@@ -295,7 +295,7 @@ if __name__ == "__main__":
     parser.add_argument('--train', nargs='?', default=True, type=distutils.util.strtobool)
     parser.add_argument('--test_single_input', nargs='?', default='data/test_combined/combined.wav', type=str)
     parser.add_argument('--freq_weighted', nargs='?', default=True, type=distutils.util.strtobool)
-    parser.add_argument('--test_batch', nargs='?', default=True, type=distutils.util.strtobool)
+    parser.add_argument('--test_batch', nargs='?', default=False, type=distutils.util.strtobool)
     args = parser.parse_args()
 
     if test_batch:
