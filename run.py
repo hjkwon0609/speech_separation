@@ -210,7 +210,7 @@ def model_batch_test(test_input):
     combined, clean, noise = zip(data)
     target = np.concatenate((clean,noise), axis=2)
 
-    combined_batch, target_batch = create_batch(combined, target, Config.batch_size)
+    combined_batch, target_batch = create_batch(combined, target, 50)
 
     with tf.Graph().as_default():
         model = SeparationModel()
@@ -236,11 +236,11 @@ def model_batch_test(test_input):
             for i in xrange(num_outputs):
                 clean_output = clean_outputs[i]
                 noise_output = noise_outputs[i]
-                
+
                 clean_mask, noise_mask = create_mask(clean_output, noise_output)
 
-                clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), test_spec), test_spec) 
-                noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), test_spec), test_spec)
+                clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), combined_batch[0][i]), test_spec)
+                noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), combined_batch[0][i]), test_spec)
 
                 clean_wav = stft.ispectrogram(clean_spec)
                 noise_wav = stft.ispectrogram(noise_spec)
