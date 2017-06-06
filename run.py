@@ -203,10 +203,6 @@ def model_test(test_input):
 
 def model_batch_test(test_input):
 
-    # needed for calling ispectrogram
-    test_rate, test_audio = wavfile.read(test_input)
-    test_spec = stft.spectrogram(test_audio)
-
     data = h5py.File('%sdata%d' % (DIR, 5))['data'].value
     
     combined, clean, noise = zip(data)
@@ -241,14 +237,17 @@ def model_batch_test(test_input):
 
                 clean_mask, noise_mask = create_mask(clean_output, noise_output)
 
-                clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), combined_batch[0][i]), test_spec)
-                noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), combined_batch[0][i]), test_spec)
+                clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), combined_batch[0][i]), clean[0])
+                noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), combined_batch[0][i]), clean[0])
 
-                sdr, sir, sar, _ = bss_eval_sources(clean, clean_spec)
+                estimated_clean_wav = stft.ispectrogram(clean_spec)
+                estimated_noise_wav = stft.ispectrogram(noise_spec)
+
+                reference_clean_wav = stft.ispectrogram(clean[i])
+                reference_noise_wav = stft.ispectrogram(noise[i])
+
+                sdr, sir, sar, _ = bss_eval_sources(reference_clean_wav, estimated_clean_wav)
                 print("Eval metrics for sdr: %s, sir: %s, sar: %s", sdr, sir, sar)
-
-                clean_wav = stft.ispectrogram(clean_spec)
-                noise_wav = stft.ispectrogram(noise_spec)
 
 
 def writeWav(fn, fs, data):
@@ -296,13 +295,13 @@ if __name__ == "__main__":
     parser.add_argument('--train', nargs='?', default=True, type=distutils.util.strtobool)
     parser.add_argument('--test_single_input', nargs='?', default='data/test_combined/combined.wav', type=str)
     parser.add_argument('--freq_weighted', nargs='?', default=True, type=distutils.util.strtobool)
-    parser.add_argument('--test_batch', nargs='?', default=None, type=str)
+    parser.add_argument('--test_batch', nargs='?', default=True, type=distutils.util.strtobool)
     args = parser.parse_args()
 
-    if args.train:
-        model_train(args.freq_weighted)
-    else if test_batch:
+    if test_batch:
         model_batch_test(args.test_batch)
+    elif args.train:
+        model_train(args.freq_weighted)
     else:
         model_test(args.test_single_input)
 
