@@ -98,6 +98,7 @@ class SeparationModel():
         """
 
         cell = None
+        cell_bw = None
         if Config.num_layers > 1:
             # multi layer
             cell = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.GRUCell(Config.output_size, 
@@ -105,8 +106,8 @@ class SeparationModel():
             cell_bw = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.GRUCell(Config.output_size, 
             input_size=Config.num_final_features) for _ in range(Config.num_layers)], state_is_tuple=False)
         else:
-            cell = tf.contrib.rnn.GRUCell(Config.output_size, input_size=Config.num_final_features, activation=tf.nn.relu)
-            cell_bw = tf.contrib.rnn.GRUCell(Config.output_size, input_size=Config.num_final_features, activation=tf.nn.relu)
+            cell = tf.contrib.rnn.GRUCell(Config.output_size, input_size=Config.num_final_features)
+            cell_bw = tf.contrib.rnn.GRUCell(Config.output_size, input_size=Config.num_final_features)
 
         # output, state = tf.nn.dynamic_rnn(cell, self.inputs_placeholder, dtype=tf.float32)
         output, state = tf.nn.bidirectional_dynamic_rnn(cell, cell_bw, self.inputs_placeholder, dtype=tf.float32)

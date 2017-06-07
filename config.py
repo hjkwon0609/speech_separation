@@ -11,7 +11,7 @@ class Config:
     output_size = num_final_features * 2
     num_hidden = 128
 
-    num_layers = 2
+    num_layers = 3
 
     num_epochs = 50
     l2_lambda = 0.0000001

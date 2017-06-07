@@ -24,6 +24,8 @@ import stft
 from evaluate import bss_eval_sources
 import pickle
 
+import copy
+
 DIR = 'data/processed/'
 
 INPUT_NOISE_DIR = 'data/raw_noise/'
@@ -244,6 +246,8 @@ def model_batch_test():
 
     combined_batch, target_batch = create_batch(combined, target, 50)
 
+    original_combined_batch = [copy.deepcopy(batch) for batch in combined_batch]
+
     with tf.Graph().as_default():
         model = SeparationModel()
         saver = tf.train.Saver(tf.trainable_variables())
@@ -257,52 +261,88 @@ def model_batch_test():
                 print("Created model with fresh parameters.")
                 session.run(tf.initialize_all_variables())
 
-            output, _, _ = model.train_on_batch(session, combined_batch[0], target_batch[0], train=False)
+            curr_mask_array = []
+            prev_mask_array = None
+            diff = float('inf')
+            iters = 0
 
-            num_freq_bin = output.shape[2] / 2
-            clean_outputs = output[:,:,:num_freq_bin]
-            noise_outputs = output[:,:,num_freq_bin:]
+            while True:
+                iters += 1
+                output, _, _ = model.train_on_batch(session, combined_batch[0], target_batch[0], train=False)
 
-            # clean = [target[:,:num_freq_bin] for target in target_batch]
-            # noise = [target[:,num_freq_bin:] for target in target_batch]
+                num_freq_bin = output.shape[2] / 2
+                clean_outputs = output[:,:,:num_freq_bin]
+                noise_outputs = output[:,:,num_freq_bin:]
 
-            num_outputs = len(clean_outputs)
+                # clean = [target[:,:num_freq_bin] for target in target_batch]
+                # noise = [target[:,num_freq_bin:] for target in target_batch]
 
-            results = []
+                num_outputs = len(clean_outputs)
 
-            for i in xrange(num_outputs):
-                clean_output = clean_outputs[i]
-                noise_output = noise_outputs[i]
+                results = []
 
-                stft_settings = settings[i]
-                orig_length = stft_settings['orig_length']
-                stft_settings.pop('orig_length', None)
-                clean_output = clean_output[-orig_length:]
-                noise_output = noise_output[-orig_length:]
+                for i in xrange(num_outputs):
+                    orig_clean_output = clean_outputs[i]
+                    orig_noise_output = noise_outputs[i]
 
-                clean_mask, noise_mask = create_mask(clean_output, noise_output)
+                    stft_settings = copy.deepcopy(settings[i])
+                    orig_length = stft_settings['orig_length']
+                    stft_settings.pop('orig_length', None)
+                    clean_output = orig_clean_output[-orig_length:]
+                    noise_output = orig_noise_output[-orig_length:]
 
-                clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), combined_batch[0][i][-orig_length:].transpose()), settings[i])
-                noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), combined_batch[0][i][-orig_length:].transpose()), settings[i])
+                    clean_mask, noise_mask = create_mask(clean_output, noise_output)
+                    orig_clean_mask, orig_noise_mask = create_mask(orig_clean_output, orig_noise_output)
 
-                estimated_clean_wav = stft.ispectrogram(clean_spec)
-                estimated_noise_wav = stft.ispectrogram(noise_spec)
+                    curr_mask_array.append(clean_mask)
+                    # if i == 0:
+                        # print clean_mask[10:20,10:20]
+                    curr_mask_array.append(noise_mask)
 
-                reference_clean_wav = stft.ispectrogram(SpectrogramArray(clean[i][-orig_length:], stft_settings).transpose())
-                reference_noise_wav = stft.ispectrogram(SpectrogramArray(noise[i][-orig_length:], stft_settings).transpose())
+                    clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), original_combined_batch[0][i][-orig_length:].transpose()), settings[i])
+                    noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), original_combined_batch[0][i][-orig_length:].transpose()), settings[i])
 
-                try:
-                    sdr, sir, sar, _ = bss_eval_sources(np.array([reference_clean_wav, reference_noise_wav]), np.array([estimated_clean_wav, estimated_noise_wav]), False)
-                    results.append((sdr[0], sdr[1], sir[0], sir[1], sar[0], sar[1]))
-                except ValueError:
-                    print('error')
-                    continue
-            
+                    # print '-' * 20
+                    # print original_combined_batch[0][i]
+                    # print '=' * 20
+                    combined_batch[0][i] += np.multiply(orig_clean_mask, original_combined_batch[0][i]) * 0.1
+                    # print combined_batch[0][i]
+                    # print '=' * 20
+                    # print original_combined_batch[0][i]
+                    # print '-' * 20
+
+                    estimated_clean_wav = stft.ispectrogram(clean_spec)
+                    estimated_noise_wav = stft.ispectrogram(noise_spec)
+
+                    reference_clean_wav = stft.ispectrogram(SpectrogramArray(clean[i][-orig_length:], stft_settings).transpose())
+                    reference_noise_wav = stft.ispectrogram(SpectrogramArray(noise[i][-orig_length:], stft_settings).transpose())
+
+                    try:
+                        sdr, sir, sar, _ = bss_eval_sources(np.array([reference_clean_wav, reference_noise_wav]), np.array([estimated_clean_wav, estimated_noise_wav]), False)
+                        results.append((sdr[0], sdr[1], sir[0], sir[1], sar[0], sar[1]))
+                        # print('%f, %f, %f, %f, %f, %f' % (sdr[0], sdr[1], sir[0], sir[1], sar[0], sar[1]))
+                    except ValueError:
+                        print('error')
+                        continue
+                break
+                
+                # diff = 1
+                # if prev_mask_array is not None:
+                #     # print curr_mask_array[0]
+                #     # print prev_mask_array[0]
+                #     diff = sum(np.sum(np.abs(curr_mask_array[i] - prev_mask_array[i])) for i in xrange(len(prev_mask_array)))
+                #     print('Changes after iteration %d: %d' % (iters, diff))
+
+                # sdr_cleans, sdr_noises, sir_cleans, sir_noises, sar_cleans, sar_noises = zip(*results)
+                # print('Avg sdr_cleans: %f, sdr_noises: %f, sir_cleans: %f, sir_noises: %f, sar_cleans: %f, sar_noises: %f' % (np.mean(sdr_cleans), np.mean(sdr_noises), np.mean(sir_cleans), np.mean(sir_noises), np.mean(sar_cleans), np.mean(sar_noises)))
+
+                # prev_mask_array = [copy.deepcopy(mask[:,:]) for mask in curr_mask_array]
+
+                # if diff == 0:
+                #     break
 
             results_filename = '%sresults_%d_%f' % ('data/results/', Config.num_layers, Config.lr)
             # results_filename += 'freq_weighted'
-
-            print results
 
             with open(results_filename + '.csv', 'w+') as f:
                 for sdr_1, sdr_2, sir_1, sir_2, sar_1, sar_2 in results:
