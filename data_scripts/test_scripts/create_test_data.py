@@ -13,7 +13,7 @@ INPUT_CLEAN_DIR = '../../data/sliced_clean/'
 OUTPUT_DIR = '../../data/test_combined/'
 
 CLEAN_FILE = INPUT_CLEAN_DIR + 'f10_script2_clean_113.wav'
-NOISE_FILE = INPUT_NOISE_DIR + 'noise5_1.wav'
+NOISE_FILE = INPUT_NOISE_DIR + 'noise1_1.wav'
 
 def writeWav(fn, fs, data):
 	data = data * 1.5 / np.max(np.abs(data))

@@ -22,7 +22,15 @@ from stft.types import SpectrogramArray
 import stft
 
 from evaluate import bss_eval_sources
+import pickle
 
+DIR = 'data/processed/'
+
+INPUT_NOISE_DIR = 'data/raw_noise/'
+INPUT_CLEAN_DIR = 'data/sliced_clean/'
+
+CLEAN_FILE = INPUT_CLEAN_DIR + 'f10_script2_clean_113.wav'
+NOISE_FILE = INPUT_NOISE_DIR + 'noise1_1.wav'
 
 def clean_data(data):
     # hack for now so that I don't have to preprocess again
@@ -55,7 +63,7 @@ def create_batch(input_data, target_data, batch_size):
 def model_train(freq_weighted):
     logs_path = "tensorboard/" + strftime("%Y_%m_%d_%H_%M_%S", gmtime())
 
-    DIR = 'data/processed/'
+    
     TESTING_MODE = True
 
     data = h5py.File('%sdata%d' % (DIR, 0))['data'].value
@@ -164,7 +172,18 @@ def model_train(freq_weighted):
 def model_test(test_input):
 
     test_rate, test_audio = wavfile.read(test_input)
+    clean_rate, clean_audio = wavfile.read(CLEAN_FILE)
+    noise_rate, noise_audio = wavfile.read(NOISE_FILE)
+
+    length = len(clean_audio)
+    noise_audio = noise_audio[:length]
+
+    clean_spec = stft.spectrogram(clean_audio)
+    noise_spec = stft.spectrogram(noise_audio)
     test_spec = stft.spectrogram(test_audio)
+
+    reverted_clean = stft.ispectrogram(clean_spec)
+    reverted_noise = stft.ispectrogram(noise_spec)
 
     test_data = np.array([test_spec.transpose() / 100000])  # make data a batch of 1
 
@@ -192,21 +211,36 @@ def model_test(test_input):
 
             clean_mask, noise_mask = create_mask(clean_output, noise_output)
 
-            clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), test_spec), test_spec) 
-            noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), test_spec), test_spec)
+            clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), test_spec), test_spec.stft_settings) 
+            noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), test_spec), test_spec.stft_settings)
 
             clean_wav = stft.ispectrogram(clean_spec)
             noise_wav = stft.ispectrogram(noise_spec)
 
+            sdr, sir, sar, _ = bss_eval_sources(np.array([reverted_clean, reverted_noise]), np.array([clean_wav, noise_wav]), False)
+            print(sdr, sir, sar)
+
             writeWav('data/test_combined/output_clean.wav', 44100, clean_wav)
             writeWav('data/test_combined/output_noise.wav', 44100, noise_wav)
 
-def model_batch_test(test_input):
+def model_batch_test():
 
-    data = h5py.File('%sdata%d' % (DIR, 5))['data'].value
+    test_batch = h5py.File('%stest_batch' % (DIR))
+    data = test_batch['data'].value
+
+    with open('%stest_settings.pkl' % (DIR), 'rb') as f:
+        settings = pickle.load(f)
+
+    # print(settings[:2])
     
     combined, clean, noise = zip(data)
+    combined = combined[0]
+    clean = clean[0]
+    noise = noise[0]
     target = np.concatenate((clean,noise), axis=2)
+
+    # test_rate, test_audio = wavfile.read('data/test_combined/combined.wav')
+    # test_spec = stft.spectrogram(test_audio)
 
     combined_batch, target_batch = create_batch(combined, target, 50)
 
@@ -229,25 +263,53 @@ def model_batch_test(test_input):
             clean_outputs = output[:,:,:num_freq_bin]
             noise_outputs = output[:,:,num_freq_bin:]
 
+            # clean = [target[:,:num_freq_bin] for target in target_batch]
+            # noise = [target[:,num_freq_bin:] for target in target_batch]
+
             num_outputs = len(clean_outputs)
+
+            results = []
 
             for i in xrange(num_outputs):
                 clean_output = clean_outputs[i]
                 noise_output = noise_outputs[i]
 
+                stft_settings = settings[i]
+                orig_length = stft_settings['orig_length']
+                stft_settings.pop('orig_length', None)
+                clean_output = clean_output[-orig_length:]
+                noise_output = noise_output[-orig_length:]
+
                 clean_mask, noise_mask = create_mask(clean_output, noise_output)
 
-                clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), combined_batch[0][i]), clean[0])
-                noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), combined_batch[0][i]), clean[0])
+                clean_spec = createSpectrogram(np.multiply(clean_mask.transpose(), combined_batch[0][i][-orig_length:].transpose()), settings[i])
+                noise_spec = createSpectrogram(np.multiply(noise_mask.transpose(), combined_batch[0][i][-orig_length:].transpose()), settings[i])
 
                 estimated_clean_wav = stft.ispectrogram(clean_spec)
                 estimated_noise_wav = stft.ispectrogram(noise_spec)
 
-                reference_clean_wav = stft.ispectrogram(clean[i])
-                reference_noise_wav = stft.ispectrogram(noise[i])
+                reference_clean_wav = stft.ispectrogram(SpectrogramArray(clean[i][-orig_length:], stft_settings).transpose())
+                reference_noise_wav = stft.ispectrogram(SpectrogramArray(noise[i][-orig_length:], stft_settings).transpose())
 
-                sdr, sir, sar, _ = bss_eval_sources(reference_clean_wav, estimated_clean_wav)
-                print("Eval metrics for sdr: %s, sir: %s, sar: %s", sdr, sir, sar)
+                try:
+                    sdr, sir, sar, _ = bss_eval_sources(np.array([reference_clean_wav, reference_noise_wav]), np.array([estimated_clean_wav, estimated_noise_wav]), False)
+                    results.append((sdr[0], sdr[1], sir[0], sir[1], sar[0], sar[1]))
+                except ValueError:
+                    print('error')
+                    continue
+            
+
+            results_filename = '%sresults_%d_%f' % ('data/results/', Config.num_layers, Config.lr)
+            # results_filename += 'freq_weighted'
+
+            print results
+
+            with open(results_filename + '.csv', 'w+') as f:
+                for sdr_1, sdr_2, sir_1, sir_2, sar_1, sar_2 in results:
+                    f.write('%f,%f,%f,%f,%f,%f\n' % (sdr_1, sdr_2, sir_1, sir_2, sar_1, sar_2))
+
+            # f = h5py.File(results_filename, 'w')
+            # f.create_dataset('result', data=results, compression="gzip", compression_opts=9)
 
 
 def writeWav(fn, fs, data):
@@ -275,17 +337,17 @@ def create_mask(clean_output, noise_output, hard=True):
 
     return clean_mask, noise_mask
 
-def createSpectrogram(arr, orig):
+def createSpectrogram(arr, settings):
     x = SpectrogramArray(arr, stft_settings={
-                                'framelength': orig.stft_settings['framelength'],
-                                'hopsize': orig.stft_settings['hopsize'],
-                                'overlap': orig.stft_settings['overlap'],
-                                'centered': orig.stft_settings['centered'],
-                                'window': orig.stft_settings['window'],
-                                'halved': orig.stft_settings['halved'],
-                                'transform': orig.stft_settings['transform'],
-                                'padding': orig.stft_settings['padding'],
-                                'outlength': orig.stft_settings['outlength'],
+                                'framelength': settings['framelength'],
+                                'hopsize': settings['hopsize'],
+                                'overlap': settings['overlap'],
+                                'centered': settings['centered'],
+                                'window': settings['window'],
+                                'halved': settings['halved'],
+                                'transform': settings['transform'],
+                                'padding': settings['padding'],
+                                'outlength': settings['outlength'],
                                 }
                         )
     return x
@@ -299,7 +361,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.test_batch:
-        model_batch_test(args.test_batch)
+        model_batch_test()
     elif args.train:
         model_train(args.freq_weighted)
     else:
