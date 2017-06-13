@@ -8,6 +8,7 @@ from scipy.io import wavfile
 from stft.types import SpectrogramArray
 import pickle
 import scipy
+from matplotlib import pyplot as plt
 
 raw1 = '../../data/sliced_clean/f10_script2_clean_113.wav'
 raw2 = "../../data/raw_noise/noise11_1.wav"
@@ -83,9 +84,25 @@ def createMatrix():
 	# 		a[i][j] = abs(spec1[i][j]) / (abs(spec1[i][j]) + abs(spec2[i][j]))
 	# 		b[i][j] = abs(spec2[i][j]) / (abs(spec1[i][j]) + abs(spec2[i][j]))
 
+	def plotfft(data, sr, ylim=None):
+		plt.plot(np.abs(data))
+		if ylim != None:
+			plt.ylim(ylim);
+		plt.show()
+
 	fs, data = wavfile.read(merged)
 	spec = stft.spectrogram(data)
 	spec = squeeze(spec)
+
+	# ax1 = plt.subplot(211)
+	time = np.arange(0, 7.6382, 0.0001)
+	# plt.plot(time, data1)
+	plt.xlim([0, 2])
+	# plt.subplot(212)
+	Pxx, freqs, bins, im = plt.specgram(data, NFFT=200, Fs=fs, noverlap=100, cmap=plt.cm.gist_heat)
+	plt.show()
+
+	return
 
 	output_a = createSpectrogram(np.multiply(a, spec), spec)
 	output_b = createSpectrogram(np.multiply(b, spec), spec)
